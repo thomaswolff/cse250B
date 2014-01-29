@@ -153,7 +153,13 @@ gs = preprocess(x, w, f, tag_set)
 #		print(row)
 #	print("---------------")
 predictLabel = predict(gs, tag_set, x)
-	
+
+A = {}
+B = {}
+fj = []
+for a in A:
+	for b in B:
+		fj = createFeatureFunc(a, b)
 	
 	
 	
