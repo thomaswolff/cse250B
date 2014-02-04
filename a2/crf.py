@@ -1,15 +1,18 @@
 import random
 
-START = 0
-SPACE = 1
-PERIOD = 2
-COMMA = 3
-QUESTION_MARK = 4
-EXCAMLATION_POINT = 5
-COLON = 6
+START = 6
+SPACE = 0
+PERIOD = 1
+COMMA = 2
+QUESTION_MARK = 3
+EXCAMLATION_POINT = 4
+COLON = 5
 STOP = 7
 
 minint = -100000000000
+
+question_words = {"how", "where", "who", "why", "when"}
+conjunctions_words = {"and", "or", "but", "for", "as", "because", "nor", "yet", "so"}
 
 class Sentence(object):
 	x = []
@@ -22,7 +25,43 @@ class Sentence(object):
 		self.predicted_y = []
 		
 def featureFunction1(y_prev, y, x, i):
-	return x[0] is "Who"
+	return y is QUESTION_MARK and x[0].lower() in question_words and i == len(x) - 1
+
+
+def fFsQuestionTemplate(k):
+	def f(y_prev, y, x, i):
+		return y is QUESTION_MARK and x[k].lower() in question_words and i == len(x) - 1
+	return f
+
+def fFsEndsWithTemplate(k, suffix):
+	def f(y_prev, y, x, i):
+		return x[k].endswith(suffix)
+	return f
+
+def fFsStartWithCapitalLetter(k):
+	def f(y_prev, y, x, i):
+		return x[k][0].isupper()
+	return f
+
+def fFsStartssWithTemplate(k, suffix):
+	def f(y_prev, y, x, i):
+		return x[k].startswith(suffix)
+	return f
+
+def fFsConjunction(k):
+	def f(y_prev, y, x, i):
+		return y is COMMA and x[k].lower() in conjunctions_words
+	return f
+
+def fFsPeriod(k):
+	def f(y_prev, y, x, i):
+		return k is i and y is PERIOD
+	return f
+
+
+
+
+
 	
 def featureFunction2(y_prev, y, x, i):
 	return y is STOP
@@ -61,10 +100,23 @@ def preprocess(x, w, f, tag_set):
 # gs are the different enumerated g-functions
 def U(k, v, gs, tag_set, dp_table):
 	max_val = minint
-	if(k is 0):
-		dp_table[0][v] = gs[0][START][v]
-		max_val = dp_table[0][v]
+	print "k: " + str(k)
+	if(k is 1):
+		print "er i if"
+
+		for u in tag_set:
+			print "u: " + str(u)
+			if(dp_table[k-1][u] is minint):
+				u_val = gs[k-1][u][v]
+			else:
+				u_val = dp_table[k-1][u]
+			if (u_val > max_val):
+				max_val = u_val
+		dp_table[0][v] = max_val
+
 	else:
+		print "else"
+		print "u: "
 		for u in tag_set:
 			if(dp_table[k-1][u] is minint):
 				u_val = U(k-1, u, gs, tag_set, dp_table) + gs[k-1][u][v]
@@ -131,18 +183,18 @@ def readFile(filename):
 		wordsInSentence = sentence.rstrip().split(' ')
 		tagsInLabel = label.rstrip().split(' ')
 		examples.append(Sentence(wordsInSentence, tagsInLabel))
-	random.shuffle(examples)
+	#random.shuffle(examples)
 	return examples
 
 examples = readFile("training")
-e = examples[0]
+e = examples[19]
 x = e.x
 y = e.y
 #print("Sentence: " + str(x))
 #print("Label: " + str(y))
-w = [0.23, 1.4]
-f = [featureFunction1, featureFunction2]
-tag_set = {START, SPACE, PERIOD, COMMA, QUESTION_MARK, EXCAMLATION_POINT, COLON, STOP}
+w = [10.0]
+f = [featureFunction1]
+tag_set = [SPACE, PERIOD, COMMA, QUESTION_MARK, EXCAMLATION_POINT, COLON]
 gs = preprocess(x, w, f, tag_set)
 #for g in gs:
 #	print("-------G-------")
@@ -153,6 +205,7 @@ gs = preprocess(x, w, f, tag_set)
 #		print(row)
 #	print("---------------")
 predictLabel = predict(gs, tag_set, x)
+print predictLabel
 
 A = {}
 B = {}
