@@ -1,20 +1,21 @@
 import random
+import time
 
-START = 6
-SPACE = 0
-PERIOD = 1
-COMMA = 2
-QUESTION_MARK = 3
-EXCAMLATION_POINT = 4
-COLON = 5
+START = 0
+SPACE = 1
+PERIOD = 2
+COMMA = 3
+QUESTION_MARK = 4
+EXCAMLATION_POINT = 5
+COLON = 6
 STOP = 7
-
+ounter = 0
 minint = -100000
 
 question_words = ["how", "where", "who", "why", "when", "what", "can"]
 conjunction_words = ["and", "or", "but", "for", "as", "because", "nor", "yet", "so"]
 indictment_words = ["hi", "hello", "hey"]
-tag_set = [SPACE, PERIOD, COMMA, QUESTION_MARK, EXCAMLATION_POINT, COLON]
+tag_set = [START, SPACE, PERIOD, COMMA, QUESTION_MARK, EXCAMLATION_POINT, COLON, STOP]
 
 class Sentence(object):
 	x = []
@@ -25,6 +26,51 @@ class Sentence(object):
 		self.x = x
 		self.y = y
 		self.predicted_y = []
+
+
+class Template1D(object):
+		x_index = -1
+		use_y_i = True
+		premise = lambda x: True
+		dictionary = {}
+
+
+	def __init__(self, x_index, use_y_i, set_of_b, premise):
+		self.x_index = x_index
+		self.use_y_i = use_y_i
+		self.premise = premise
+		for b in set_of_b:
+			dictionary[b] = 0.0
+
+	def __call__(self, y_prev, y, x, i):
+		word = ""
+		if self.x_index is (-1) word = x[i] else word = x[x_index]
+		if self.premise(word):
+			if self.use_y_i return self.dictionary[y] else self.dictionary[y_prev]
+		else:
+			return 0.0
+
+class Template2D(object):
+		x_index = -1
+		use_y_i = True
+		premise = lambda x: True
+		dictionary = {}
+
+		def __init__(self, x_index, use_y_i, set_of_a, set_of_b, premise):
+			self.x_index = x_index
+			self.use_y_i = use_y_i
+			self.premise = premise
+			for a in set_of_a:
+				for b in set_of_b:
+					dictionary[str(a)+str(b)] = 0.0
+
+		def __call__(self, y_prev, y, x, i):
+			word = ""
+			if self.x_index is (-1) word = x[i] else word = x[x_index]
+			if self.premise(word):
+				if self.use_y_i return self.dictionary[str(word)+str(y)] else self.dictionary[str(word)+str(y_prev)]
+			else:
+				return 0.0
 
 class FeatureFunction(object):
 	a_fun = None
@@ -127,28 +173,43 @@ def tagsAre(b):
 	
 
 def initializeFeatureFunctions():
-	f = []
-	a_functions = []
-	b_functions = []
-	for a in {"ing", "s"}:
-		a_functions.append(wordEndsWithSequence(a))
-	for a in conjunction_words + question_words:
-		a_functions.append(wordIs(a))
-	for tag in tag_set:
-		b_functions.append(tagIs(tag))
-		b_functions.append(prevTagIs(tag))
-		for tag_2 in tag_set:
-			b_functions.append(tagsAre([tag, tag_2]))
-	for a_func in a_functions:
-		for b_func in b_functions:
-			f.append(FeatureFunction(a_func, b_func))
-	print("Number of feature functions: " + str(len(f)))
-	return f
+	t1D = []
+	t2D = []
+	t1D.append(Template1D(-1, True, tag_set, lambda x: x in question_words))
+
+
+# def initializeFeatureFunctions():
+# 	f = []
+# 	a_functions = []
+# 	b_functions = []
+# 	for a in {"ing", "s"}:
+# 		a_functions.append(wordEndsWithSequence(a))
+# 	for a in conjunction_words + question_words:
+# 		a_functions.append(wordIs(a))
+# 	for tag in tag_set:
+# 		b_functions.append(tagIs(tag))
+# 		b_functions.append(prevTagIs(tag))
+# 		for tag_2 in tag_set:
+# 			b_functions.append(tagsAre([tag, tag_2]))
+# 	for a_func in a_functions:
+# 		for b_func in b_functions:
+# 			f.append(FeatureFunction(a_func, b_func))
+# 	print("Number of feature functions: " + str(len(f)))
+# 	return f
+
+
 
 
 	
 def featureFunction2(y_prev, y, x, i):
 	return y is STOP
+
+
+
+
+
+
+
 
 # Calculate value of a g function given y_prev and y
 # y_prev and y are the two tags
@@ -156,10 +217,16 @@ def featureFunction2(y_prev, y, x, i):
 # f is a vector of J feature functions
 # x is the given sentence
 # i is the position in the sequence and also the number of the g-function
-def g(y_prev, y, w, f, x, i):
+def g(y_prev, y, x, i):
+	# sum = 0.0
+	# for (weight, function) in zip(w, f):
+	# 	if (weight != 0.0):
+	# 		sum += weight*function.evaluateLowLevelFeatureFunction(y_prev, y, x, i)
+	# return sum
 	sum = 0.0
-	for (weight, function) in zip(w, f):
-		sum += weight*function.evaluateLowLevelFeatureFunction(y_prev, y, x, i)
+	for i in range(len(x)):
+		for t in ts:
+			sum += ts(y_prev, y, x, i)
 	return sum
 	
 # Calculate all g functions for all y_prev and y given a sentence x
@@ -182,33 +249,23 @@ def preprocess(x, w, f, tag_set):
 # k is the length of the sequence
 # v is the tag for y[k]
 # gs are the different enumerated g-functions
-def U(k, v, gs, tag_set, dp_table):
-	max_val = minint
-	if(k is 1):
-		for u in tag_set:
-			if(dp_table[k-1][u] is minint):
-				u_val = gs[k-1][u][v]
-			else:
-				u_val = dp_table[k-1][u]
-			if (u_val > max_val):
-				max_val = u_val
-		dp_table[0][v] = max_val
-	else:
-		for u in tag_set:
-			if(dp_table[k-1][u] is minint):
-				u_val = U(k-1, u, gs, tag_set, dp_table) + gs[k-1][u][v]
-			else:
-				u_val = dp_table[k-1][u]
-			if (u_val > max_val):
-				max_val = u_val
-		dp_table[k-1][v] = max_val
-	return max_val
+
 
 # Fill the U matrix by calling U on every tag in the tag set
 def fill_U_matrix(gs, tag_set, n):
 	dp_table = [[minint for j in range(len(tag_set))] for i in range(n)]
-	for tag in tag_set:
-		U(n, tag, gs, tag_set, dp_table)
+
+	for i in range(n):
+		for v in tag_set:
+			max_val = minint
+			if i == 0:
+				gs[0][START][v]
+			else:
+				for u in tag_set:
+					u_val = dp_table[i - 1][u] + gs[i][u][v]
+					if u_val > max_val:
+						max_val = u_val
+				dp_table[i][v] = max_val
 	return dp_table
 
 # Predict the most likely tag sequence y for sentence x
@@ -253,6 +310,7 @@ def collinsPerceptron(fs, tag_set, training_set, validation_set):
 	previousCorrectnessRate = 0.0
 	# Epoch loop
 	while(True):
+		startTime = time.gmtime()
 		# For each sentence in the training data, update weights
 		for i in range(len(training_set)):
 			sentence = training_set[random.randint(0, len(training_set)-1)]
@@ -263,6 +321,7 @@ def collinsPerceptron(fs, tag_set, training_set, validation_set):
 		# See how well the model does
 		correctnessRate = validate(fs, ws, tag_set, validation_set)
 		print("Correctness rate: " + str(correctnessRate))
+		print "Time used in epoch: " + str(time.gmtime() - StartTime)
 		# Break if it begins to do worse than the previous epoch
 		if(correctnessRate <= previousCorrectnessRate): break
 		previousCorrectnessrate = correctnessRate
