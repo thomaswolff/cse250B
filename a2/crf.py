@@ -15,6 +15,8 @@ def initializeFeatureFunctions():
 	t.append(Template2D(0, True, question_words, tag_set, lambda x_index, x, i: i == (len(x) - 1)))
 	t.append(Template2D(-1, False, conjunction_words, tag_set, lambda x_index, x, i: i < (len(x)-1)))
 
+	#t.append(Template2D(-1, True, exclamation_words, tag_set, lambda x_index, x, i: i == (len(x) - 1)))
+
 	# Not using these at the moment
 	#t.append(Template2D(0, False, question_words, tag_set, lambda x_index, x, i: i == (len(x) - 1)))
 	#t.append(Template1D(-1, True, tag_set, lambda x_index, x, i: x[i][0].isupper() if(x_index is (-1)) else x[0][0].isupper()))
@@ -185,6 +187,10 @@ def collinsPerceptron(ts, tag_set, training_set, validation_set, useGibbs):
 	#ws = [0.0]*len(fs)
 	previousCorrectnessRate = 0.0
 	iterations = 0
+	if (useGibbs):
+		print "Using Contrastive divergence to train.."
+	else:
+		print "Using Collins' perceptron to train.."
 	# Epoch loop
 	while(True):
 		iterations += 1
@@ -228,6 +234,72 @@ def validate(ts, tag_set, validation_set):
 			if predictedTag is correctTag:
 				numberOfCorrectTags += 1
 	return float(numberOfCorrectTags)/numberOfTags
+
+
+def validateTestSet(ts, tag_set, validation_set, correctPredictedTags, trueTags):
+	numberOfTags = 0
+	numberOfCorrectTags = 0
+	#trueTags = [0 for i in range(len(tag_set))]
+	#correctPredictedTags = [0 for i in range(len(tag_set))]
+	totalPredictTime = 0.0
+	predict_time = 0.0
+	print "True tags: " + str(trueTags)
+	for sentence in validation_set:
+		predict_time = 0.0
+		predict_time -= time.time()
+		gs = preprocess(sentence.x, ts, tag_set)
+		y_predicted = predict(gs, tag_set, sentence)
+		#print("True label: " + str(sentence.y))
+		#print("Predicted label: " + str(y_predicted))
+		#print("Sentence: " + str(sentence.x))
+		#print("y_correct: " + str(sentence.y))
+		#print("y_predicted :" + str(y_predicted))
+		predict_time += time.time()
+		totalPredictTime += predict_time
+		for (correctTag, predictedTag) in zip(sentence.y, y_predicted):
+			numberOfTags += 1
+			trueTags[correctTag] += 1
+			if predictedTag is correctTag:
+				numberOfCorrectTags += 1
+				correctPredictedTags[predictedTag] += 1
+	print "True tags after: " + str(trueTags)
+
+	if (trueTags[SPACE] != 0):
+		print "Total number of spaces: \t\t" + str(trueTags[SPACE])
+		print "Correct predicted spaces: \t\t" + str(correctPredictedTags[SPACE])
+		print "Accuracy rate on predicting space: \t" + str(float(correctPredictedTags[SPACE]) / trueTags[SPACE])
+		print ""
+	if (trueTags[PERIOD] != 0):
+		print "Total number of periods: \t\t" + str(trueTags[PERIOD])
+		print "Correct predicted periods: \t\t" + str(correctPredictedTags[PERIOD])
+		print "Accuracy rate on predicting periods: \t" + str(float(correctPredictedTags[PERIOD]) / trueTags[PERIOD])
+		print ""
+	if (trueTags[COMMA] != 0):
+		print "Total number of commas: \t\t" + str(trueTags[COMMA])
+		print "Correct predicted commas: \t\t" + str(correctPredictedTags[COMMA])
+		print "Accuracy rate on predicting commas: \t" + str(float(correctPredictedTags[COMMA]) / trueTags[COMMA])
+		print ""
+	if (trueTags[QUESTION_MARK] != 0):
+		print "Total number of question marks: \t\t" + str(trueTags[QUESTION_MARK])
+		print "Correct predicted question marks: \t\t" + str(correctPredictedTags[QUESTION_MARK])
+		print "Accuracy rate on predicting question marks: \t" + str(float(correctPredictedTags[QUESTION_MARK]) / trueTags[QUESTION_MARK])
+		print ""
+	if (trueTags[EXCLAMATION_POINT] != 0):
+		print "Total number of exclamation points: \t\t" + str(trueTags[EXCLAMATION_POINT])
+		print "Correct predicted exclamation points: \t\t" + str(correctPredictedTags[EXCLAMATION_POINT])
+		print "Accuracy rate on predicting exclamation points: \t" + str(float(correctPredictedTags[EXCLAMATION_POINT]) / trueTags[EXCLAMATION_POINT])
+		print ""
+	if (trueTags[COLON] != 0):
+		print "Total number of colons: \t\t" + str(trueTags[COLON])
+		print "Correct predicted colons: \t\t" + str(correctPredictedTags[COLON])
+		print "Accuracy rate on predicting colons: \t" + str(float(correctPredictedTags[COLON]) / trueTags[COLON])
+		print ""
+
+	print "Time to predict one sentence: " + str(totalPredictTime / len(validation_set))
+
+
+
+	return float(numberOfCorrectTags)/numberOfTags
 	
 def readFile(filename):
 	with open ("./punctuationDataset/" + filename + "Labels.txt") as data:
@@ -252,21 +324,68 @@ def readFile(filename):
 	random.shuffle(examples)
 	return examples
 
-examples = readFile("training")
-print("Examples read")
-training_set = examples[:60000]
-validation_set = examples[60000:]
-print("Training set and validation set initialized")
-ts = initializeFeatureFunctions()
-print("Feature functions initialized")
-model = collinsPerceptron(ts, tag_set, training_set, validation_set, False)
 
-testExamples = readFile("test")
-correctnessRate = validate(model, tag_set, testExamples)
-print ("Correctness rate in test set: " + str (correctnessRate))
+def main():
+	numberOfRuns = 10
+	run = 0
+	correctPredictedTags = [0 for i in range(len(tag_set))]
+	trueTags = [0 for i in range(len(tag_set))]
+	averageAccuracy = 0
+	while run < numberOfRuns:
+		run += 1
+		examples = readFile("training")
+		print("Examples read")
+		random.shuffle(examples)
+		training_set = examples[:35000]
+		validation_set = examples[35000:]
+		print("Training set and validation set initialized")
+		ts = initializeFeatureFunctions()
+		print("Feature functions initialized")
+		model = collinsPerceptron(ts, tag_set, training_set, validation_set, True)
+
+		testExamples = readFile("test")
+		random.shuffle(testExamples)
+		correctnessRate = validateTestSet(model, tag_set, testExamples, correctPredictedTags, trueTags)
+		averageAccuracy += correctnessRate
+		print ("Correctness rate in test set: " + str (correctnessRate))
+	print ""
+	print "Finished with " + str(numberOfRuns) + " runs."
+
+	if (trueTags[SPACE] != 0):
+		print "Total number of spaces: \t\t" + str(trueTags[SPACE])
+		print "Correct predicted spaces: \t\t" + str(correctPredictedTags[SPACE])
+		print "Accuracy rate on predicting space: \t" + str(float(correctPredictedTags[SPACE]) / trueTags[SPACE])
+		print ""
+	if (trueTags[PERIOD] != 0):
+		print "Total number of periods: \t\t" + str(trueTags[PERIOD])
+		print "Correct predicted periods: \t\t" + str(correctPredictedTags[PERIOD])
+		print "Accuracy rate on predicting periods: \t" + str(float(correctPredictedTags[PERIOD]) / trueTags[PERIOD])
+		print ""
+	if (trueTags[COMMA] != 0):
+		print "Total number of commas: \t\t" + str(trueTags[COMMA])
+		print "Correct predicted commas: \t\t" + str(correctPredictedTags[COMMA])
+		print "Accuracy rate on predicting commas: \t" + str(float(correctPredictedTags[COMMA]) / trueTags[COMMA])
+		print ""
+	if (trueTags[QUESTION_MARK] != 0):
+		print "Total number of question marks: \t\t" + str(trueTags[QUESTION_MARK])
+		print "Correct predicted question marks: \t\t" + str(correctPredictedTags[QUESTION_MARK])
+		print "Accuracy rate on predicting question marks: \t" + str(float(correctPredictedTags[QUESTION_MARK]) / trueTags[QUESTION_MARK])
+		print ""
+	if (trueTags[EXCLAMATION_POINT] != 0):
+		print "Total number of exclamation points: \t\t" + str(trueTags[EXCLAMATION_POINT])
+		print "Correct predicted exclamation points: \t\t" + str(correctPredictedTags[EXCLAMATION_POINT])
+		print "Accuracy rate on predicting exclamation points: \t" + str(float(correctPredictedTags[EXCLAMATION_POINT]) / trueTags[EXCLAMATION_POINT])
+		print ""
+	if (trueTags[COLON] != 0):
+		print "Total number of colons: \t\t" + str(trueTags[COLON])
+		print "Correct predicted colons: \t\t" + str(correctPredictedTags[COLON])
+		print "Accuracy rate on predicting colons: \t" + str(float(correctPredictedTags[COLON]) / trueTags[COLON])
+		print ""
+
+	print "Average accuracy \t\t\t" + str(averageAccuracy / float(numberOfRuns))
 
 	
-	
+main()
 	
 	
 	
