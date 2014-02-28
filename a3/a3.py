@@ -30,15 +30,21 @@ class Document(object):
 		self.filename = filename
 		self.count_vector = {}
 
-	def getProbability():
-		denumerator = 0.0
-		tettaProduct = 0.0
-		for key, value in count_vector.iteritems():
-			denumerator *= math.factorial(value)
-			tettaProduct *= tettas[key]**value
+	def getProbability(self, tettas):
+		xSum = 0.0
+		tettaSum = 0.0
+		for key, value in self.count_vector.iteritems():
+			print "value: " + str(value)
+			print "log x: " + str(math.log(math.factorial(value)))
+			xSum += math.log(math.factorial(value))
+			tettaSum += value * math.log(tettas[key])
 
-		result = float(math.factorial(length)) / (denumerator)
-		result *= tettaProduct
+		result = math.log(math.factorial(self.length))
+		print "1: " + str(result)
+		result -= xSum
+		print "2: " + str(xSum)
+		result += tettaSum
+		print "3: " + str(tettaSum)
 		return result
 
 
@@ -132,8 +138,42 @@ def readFileNames():
 	print documents[0].count_vector
 	return documents
 
+
+def test():
+	# docs : documents which consists of word array
+	# K : number of topics
+	# V : vocaburary size
+
+	z_m_n = [] # topics of words of documents
+	n_m_z = numpy.zeros((len(self.docs), K)) + alpha     # word count of each document and topic
+	n_z_t = numpy.zeros((K, V)) + beta # word count of each topic and vocabulary
+	n_z = numpy.zeros(K) + V * beta    # word count of each topic
+
+	for m, doc in enumerate(docs):
+	    z_n = []
+	    for t in doc:
+	        # draw from the posterior
+	        p_z = n_z_t[:, t] * n_m_z[m] / n_z
+	        z = numpy.random.multinomial(1, p_z / p_z.sum()).argmax()
+
+	        z_n.append(z)
+	        n_m_z[m, z] += 1
+	        n_z_t[z, t] += 1
+	        n_z[z] += 1
+	    z_m_n.append(numpy.array(z_n))
+
+def gibbs(documents, k, v, alpha, beta):
+	zs = initializeZs(k)
+
+
+def initializeZs(zs, k):
+	z = []
+	for z in zs:
+		z.append(random.randint(0, k))
+	return z
+
 def main():
-	c = 0.01
+	c = 0.1
 	documents = readFileNames()
 	vocabulary = readTerms()
 	readTermMatrix(documents)
@@ -141,6 +181,12 @@ def main():
 	tettas = [0 for i in range(len(vocabulary))]
 	calculateTettas(tettas, vocabulary, c)
 	print str(tettas)
+	print documents[95].getProbability(tettas)
+
+	sum = 0.0
+	for tet in tettas:
+		sum+= tet
+	print sum
 
 main()
 
