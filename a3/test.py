@@ -152,6 +152,7 @@ class LDA:
             z_n = self.z_m_n[m]
             n_m_z = self.n_m_z[m]
             n = 0
+            n_m_z_sum = n_m_z.sum()
             for term in doc.words:
                 # discount for n-th word t with topic z
                 z = z_n[n]
@@ -160,7 +161,7 @@ class LDA:
                 self.n_z[z] -= 1
 
                 # sampling topic new_z for t
-                p_z = self.n_z_t[:, term-1] * n_m_z / self.n_z
+                p_z = self.n_z_t[:, term-1] * n_m_z / (self.n_z * n_m_z_sum)
                 new_z = numpy.random.multinomial(1, p_z / p_z.sum()).argmax()
 
                 # set z the new topic and increment counters
@@ -221,9 +222,6 @@ def output_word_topic_dist(lda, voca):
 
 def main():
 
-    readJSON("data/wiki/encyclopedic.wikipedia.dbpedia.wikipedia_articles")
-
-    sys.exit(0)
     k = 3
     alpha = 0.1
     beta = 0.1
