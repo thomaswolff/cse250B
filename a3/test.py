@@ -48,17 +48,6 @@ class Document(object):
     def __str__(self):
         return "Document: " + self.filename + "\n" +"Category: " + self.category + "\n" +"Dict: " + str(self.count_vector)
 
-
-def readJSON(filename):
-    json_data=open(filename)
-    data = json.load(json_data)
-    pprint(data)
-    json_data.close()
-
-    for a in data:
-        print a
-
-
 def findSumOfAllSizes(vocabulary):
     sum = 0
     for key, value in vocabulary.iteritems():
@@ -188,20 +177,20 @@ class LDA:
             N += doc.length
         return numpy.exp(log_per / N)
 
+def phiDifference(phi_prev, phi_curr):
+	diff = phi_prev - phi_curr
+	diff = diff * diff
+	return diff.sum()
+		
 def lda_learning(lda, iteration, voca):
-    pre_perp = lda.perplexity()
-    print "initial perplexity=%f" % pre_perp
-    for i in range(iteration):
-        lda.inference()
-        perp = lda.perplexity()
-        print "-%d p=%f" % (i + 1, perp)
-        if pre_perp:
-            if pre_perp < perp:
-                output_word_topic_dist(lda, voca)
-                pre_perp = None
-            else:
-                pre_perp = perp
-    output_word_topic_dist(lda, voca)
+	phi_prev = lda.worddist()
+	for i in range(iteration):
+		lda.inference()
+		phi_curr = lda.worddist()
+		if phiDifference(phi_prev, phi_curr) < 0.1:
+			output_word_topic_dist(lda, voca)
+		phi_prev = phi_curr
+	output_word_topic_dist(lda, voca)
 
 def output_word_topic_dist(lda, voca):
     zcount = numpy.zeros(lda.K, dtype=int)
@@ -216,9 +205,9 @@ def output_word_topic_dist(lda, voca):
 
     phi = lda.worddist()
     for k in xrange(lda.K):
-        print "\n-- topic: %d (%d words)" % (k, zcount[k])
+        print ("\n-- topic: " + str(k) + " words: " + str(zcount[k]))
         for w in numpy.argsort(-phi[k])[:20]:
-            print "%s: %f (%d)" % (voca[w][0], phi[k,w], wordcount[k].get(w,0))
+            print (str(voca[w][0]) + ": " (str(phi[k,w]) + " (" +str(strwordcount[k].get(w,0) + ")")))
 
 def main():
 
@@ -234,7 +223,7 @@ def main():
     #numpy.random.seed(options.seed)
 
     lda = LDA(k, alpha, beta, documents, len(vocabulary))
-    print "corpus=%d, K=%d, a=%f, b=%f" % (len(vocabulary), k, alpha, beta)
+    print ("corpus=" + str(len(vocabulary)) + ", K=" + str(k) + ", a=" + str(alpha) + ", b=" + str(beta))
 
     #import cProfile
     #cProfile.runctx('lda_learning(lda, options.iteration, voca)', globals(), locals(), 'lda.profile')
