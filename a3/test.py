@@ -25,7 +25,6 @@ NUMBER_OF_NON_ZERO_VALUES = 0
 
 class Document(object):
 
-    count_vector = {}
     category = 0
     
     alphas = []
@@ -38,12 +37,7 @@ class Document(object):
     def __init__(self, filename, category):
         self.category = category
         self.filename = filename
-        self.count_vector = {}
         self.words = []
-
-    def addCount(self, index, count):
-        self.count_vector[index] = count
-        self.length += count
 
     def __str__(self):
         return "Document: " + self.filename + "\n" +"Category: " + self.category + "\n" +"Dict: " + str(self.count_vector)
@@ -93,7 +87,6 @@ def readTermMatrix(documents):
         arr = lines[i].rstrip().split(' ')
         if len(arr) > 2:
             doc = documents[int(arr[0]) - 1]
-            doc.addCount(int(arr[1]), int(arr[2]))
             doc.words.append(int(arr[1]))
 
 def readFileNames():
@@ -183,14 +176,17 @@ def phiDifference(phi_prev, phi_curr):
 	return diff.sum()
 		
 def lda_learning(lda, iteration, voca):
-	phi_prev = lda.worddist()
-	for i in range(iteration):
-		lda.inference()
-		phi_curr = lda.worddist()
-		if phiDifference(phi_prev, phi_curr) < 0.1:
-			output_word_topic_dist(lda, voca)
-		phi_prev = phi_curr
-	output_word_topic_dist(lda, voca)
+    phi_prev = lda.worddist()
+    for i in range(iteration):
+        print "before inference"
+        lda.inference()
+        print "before"
+        phi_curr = lda.worddist()
+        print "Difference: " + str(phiDifference(phi_prev, phi_curr))
+        if phiDifference(phi_prev, phi_curr) < 0.0000076:
+            output_word_topic_dist(lda, voca)
+        phi_prev = phi_curr
+    output_word_topic_dist(lda, voca)
 
 def output_word_topic_dist(lda, voca):
     zcount = numpy.zeros(lda.K, dtype=int)
@@ -207,7 +203,7 @@ def output_word_topic_dist(lda, voca):
     for k in xrange(lda.K):
         print ("\n-- topic: " + str(k) + " words: " + str(zcount[k]))
         for w in numpy.argsort(-phi[k])[:20]:
-            print (str(voca[w][0]) + ": " (str(phi[k,w]) + " (" +str(strwordcount[k].get(w,0) + ")")))
+            print (str(voca[w][0]) + ": " + str(phi[k,w]) + " (" +str(wordcount[k].get(w,0)) + ")")
 
 def main():
 
