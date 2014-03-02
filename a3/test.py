@@ -9,7 +9,14 @@ import numpy
 import string, re, timeit, math
 import json
 from pprint import pprint
+import xml.etree.ElementTree as ET
+#from nltk import PorterStemmer
+from sets import Set
+import re, string, timeit
+from stemming.porter2 import stem
 
+exclude = set(string.punctuation)
+table = string.maketrans("","")
 NUMBER_OF_DOCUMENTS = 0
 NUMBER_OF_TERMS = 0
 NUMBER_OF_NON_ZERO_VALUES = 0
@@ -34,10 +41,11 @@ class Document(object):
     filename = ""
     length = 0
 
-    def __init__(self, filename, category):
+    def __init__(self, filename, category, words):
         self.category = category
         self.filename = filename
-        self.words = []
+        self.words = words
+
 
     def __str__(self):
         return "Document: " + self.filename + "\n" +"Category: " + self.category + "\n" +"Dict: " + str(self.count_vector)
@@ -70,10 +78,46 @@ def readWords(filename):
 def readTerms():
     lines = readFile("terms_detailed.txt")
     vocabulary = {}
+    index = 1
     for line in lines:
         arr = line.rstrip().split(' ')
-        vocabulary[int(arr[0])] = (arr[1], int(arr[2]))
+        vocabulary[index] = arr[1]
+        index += 1
     return vocabulary
+
+def read400Terms():
+    lines = readFile("/classic400/wordlist.txt")
+    vocabulary = {}
+    index = 1
+    for line in lines:
+        line = line.rstrip()
+        vocabulary[index] = line
+        index += 1
+    return vocabulary
+
+def read400TrueLabels(documents):
+    lines = readFile("/classic400/truelabels.txt")
+    index = 0
+    for line in lines:
+        labels = line.split('\t')
+        for label in labels:
+            documents[index].category = int(label)
+            index += 1
+
+
+def read400():
+    lines = readFile("/classic400/classic400.txt")
+    documents = []
+    for line in lines:
+        line = line.rstrip().split('\t')
+        doc = Document("", 0, [])
+        for i in range(len(line)):
+            count = int(line[i])
+            for j in range(count):
+                doc.words.append(i+1)
+        documents.append(doc)
+    read400TrueLabels(documents)
+    return documents
 
 
 def readTermMatrix(documents):
@@ -87,7 +131,8 @@ def readTermMatrix(documents):
         arr = lines[i].rstrip().split(' ')
         if len(arr) > 2:
             doc = documents[int(arr[0]) - 1]
-            doc.words.append(int(arr[1]))
+            for j in range(int(arr[2])):
+                doc.words.append(int(arr[1]))
 
 def readFileNames():
     raw_lines = readFile("documents.txt")
@@ -102,6 +147,86 @@ def readFileNames():
         words = readWords("classic/" + filename)
         documents.append(Document(filename, category))
     return documents
+
+def readReuters(vocabulary, documents):
+    path = "./data/reuters21578-xml/reut2-0"
+    for i in range(22):
+        if i < 10:
+            filename = path + "0" + str(i)
+        else:
+            filename = path + str(i)
+        filename += ".xml"
+        parseFile(vocabulary, documents, filename)
+    return {v:k for k, v in vocabulary.items()}
+
+
+def parseFile(vocabulary, documents, filename):
+    tree = ET.parse(filename)
+    root = tree.getroot()
+    raw_docs = []
+
+    for reuter, title, dateline, body in zip(root.iter('REUTERS'), root.iter('TITLE'), root.iter('DATELINE'), root.iter('BODY')):
+        if (reuter.attrib['TOPICS'] == "YES"):
+            fullText = title.text + " " + dateline.text + " " + body.text
+            raw_docs.append(buildVocabulary(fullText, vocabulary))
+    buildIndexes(vocabulary)
+
+    for words in raw_docs:
+        words = parseString(words, vocabulary)
+        documents.append(Document("dok", 0, words))
+
+def readStopWords():
+    lines = readFile("stopwords.txt")
+    stopwords = Set([])
+    for line in lines:
+        words = line.split(' ')
+        for word in words:
+            stopwords.add(word)
+    return stopwords
+
+def buildVocabulary(fullText, vocabulary):
+    lines = fullText.split('\n')
+    words = []
+    stopwords = readStopWords()
+    for line in lines:
+        for word in re.findall(r"[\w']+", line):
+            word = word.strip().rstrip().lstrip()
+            if len(word) > 3 and not word.isdigit() and not word in stopwords:
+                word = word.lower()
+                word = stem(word)
+                words.append(word)
+                if word in vocabulary:
+                    vocabulary[word] += 1
+                else:
+                    vocabulary[word] = 1
+    return words
+
+def buildIndexes(vocabulary):
+    index = 1
+    keysToRemove = []
+    for key, value in vocabulary.iteritems():
+        if value > 2:
+            vocabulary[key] = index
+            index += 1
+        else:
+            keysToRemove.append(key)
+    for key in keysToRemove:
+        vocabulary.pop(key, None)
+
+
+
+def parseString(rawWords, vocabulary):
+    words = []
+    for word in rawWords:
+        if word in vocabulary:
+            words.append(vocabulary[word])
+    return words
+
+def removePunctation(s):
+    return s.translate(table, string.punctuation)
+
+
+
 
 class LDA:
     def __init__(self, K, alpha, beta, docs, V):
@@ -127,6 +252,18 @@ class LDA:
                 self.n_z_t[z, term-1] += 1
                 self.n_z[z] += 1
             self.z_m_n.append(numpy.array(z_n))
+
+    def getTettas(self):
+        tettas = []
+        for doc in range(len(self.docs)):
+            z_n = self.z_m_n[doc]
+            tetta = [0 for i in range(self.K)]
+            for z in z_n:
+                tetta[z] += 1
+            for i in range(len(tetta)):
+                tetta[i] = tetta[i] / float(len(z_n))
+            tettas.append(tetta)
+        return tettas
 
     def inference(self):
         """learning once iteration"""
@@ -170,6 +307,26 @@ class LDA:
             N += doc.length
         return numpy.exp(log_per / N)
 
+def tettasToMatlab(tettas):
+    return [[tettas[j][i] for j in range(len(tettas))] for i in range(len(tettas[0])) ]
+
+def writeTettas(tettas, docs):
+    newTettas = tettasToMatlab(tettas)
+    dimensions = ["X = ", "Y = ", "Z = "]
+    f = open("output.txt", "w")
+    for tag, plots in zip(dimensions, newTettas):
+        f.write(tag + str(plots))
+    colors = "["
+    for i in range(len(docs)):
+        if docs[i].category == 1:
+            colors += "[1, 0, 0];"
+        elif docs[i].category == 2:
+            colors += "[0, 1, 0];"
+        else:
+            colors += "[0, 0, 1];"
+    f.write("C = " + str(colors) + "]")
+    f.close()
+
 def phiDifference(phi_prev, phi_curr):
 	diff = phi_prev - phi_curr
 	diff = diff * diff
@@ -177,14 +334,17 @@ def phiDifference(phi_prev, phi_curr):
 		
 def lda_learning(lda, iteration, voca):
     phi_prev = lda.worddist()
+    converged = False
     for i in range(iteration):
         print "before inference"
         lda.inference()
         print "before"
         phi_curr = lda.worddist()
         print "Difference: " + str(phiDifference(phi_prev, phi_curr))
-        if phiDifference(phi_prev, phi_curr) < 0.0000076:
+        if phiDifference(phi_prev, phi_curr) < 0.00006 and converged == False:
             output_word_topic_dist(lda, voca)
+            writeTettas(lda.getTettas(), lda.docs)
+            converged = True
         phi_prev = phi_curr
     output_word_topic_dist(lda, voca)
 
@@ -203,18 +363,30 @@ def output_word_topic_dist(lda, voca):
     for k in xrange(lda.K):
         print ("\n-- topic: " + str(k) + " words: " + str(zcount[k]))
         for w in numpy.argsort(-phi[k])[:20]:
-            print (str(voca[w][0]) + ": " + str(phi[k,w]) + " (" +str(wordcount[k].get(w,0)) + ")")
+            print (str(voca[w+1]) + ": " + str(phi[k,w]) + " (" +str(wordcount[k].get(w+1,0)) + ")")
 
 def main():
-
     k = 3
     alpha = 0.1
     beta = 0.1
-    epochs = 50
+    epochs = 200
+    useClassic400 = True
+    vocabulary = {}
+    documents = []
+    print vocabulary
+    print "Number of docs: " + str(len(documents))
+    print 
 
-    documents = readFileNames()
-    vocabulary = readTerms()
-    readTermMatrix(documents)
+    if (not useClassic400):
+        vocabulary = readReuters(vocabulary, documents)
+
+
+        # documents = readFileNames()
+        # vocabulary = readTerms()
+        # readTermMatrix(documents)
+    else:
+        vocabulary = read400Terms()
+        documents = read400()
 
     #numpy.random.seed(options.seed)
 

@@ -100,9 +100,21 @@ def readWords(filename):
 def readTerms():
 	lines = readFile("terms_detailed.txt")
 	vocabulary = {}
+	index = 1
 	for line in lines:
 		arr = line.rstrip().split(' ')
-		vocabulary[int(arr[0])] = (arr[1], int(arr[2]))
+		vocabulary[index] = arr[1]
+		index += 1
+	return vocabulary
+
+def read400Terms():
+	lines = readFile("data/classic400/wordlist.txt")
+	vocabulary = {}
+	index = 1
+	for line in lines:
+		line = line.rstrip()
+		vocabulary[index] = line
+		index += 1
 	return vocabulary
 
 
