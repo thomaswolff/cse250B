@@ -341,11 +341,13 @@ def lda_learning(lda, iteration, voca):
         print "before"
         phi_curr = lda.worddist()
         print "Difference: " + str(phiDifference(phi_prev, phi_curr))
-        if phiDifference(phi_prev, phi_curr) < 0.000055 and converged == False:
+        if phiDifference(phi_prev, phi_curr) < 0.000005 and converged == False:
             output_word_topic_dist(lda, voca)
             writeTettas(lda.getTettas(), lda.docs)
             converged = True
         phi_prev = phi_curr
+    if converged == False:
+        writeTettas(lda.getTettas(), lda.docs)
     output_word_topic_dist(lda, voca)
 
 def output_word_topic_dist(lda, voca):
@@ -370,7 +372,7 @@ def main():
     alpha = 0.1
     beta = 0.1
     epochs = 200
-    useClassic400 = True
+    useClassic400 = False
     vocabulary = {}
     documents = []
     print vocabulary
