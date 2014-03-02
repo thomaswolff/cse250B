@@ -315,7 +315,7 @@ def writeTettas(tettas, docs):
     dimensions = ["X = ", "Y = ", "Z = "]
     f = open("output.txt", "w")
     for tag, plots in zip(dimensions, newTettas):
-        f.write(tag + str(plots))
+        f.write(tag + str(plots) + "\n")
     colors = "["
     for i in range(len(docs)):
         if docs[i].category == 1:
@@ -341,7 +341,7 @@ def lda_learning(lda, iteration, voca):
         print "before"
         phi_curr = lda.worddist()
         print "Difference: " + str(phiDifference(phi_prev, phi_curr))
-        if phiDifference(phi_prev, phi_curr) < 0.00006 and converged == False:
+        if phiDifference(phi_prev, phi_curr) < 0.000055 and converged == False:
             output_word_topic_dist(lda, voca)
             writeTettas(lda.getTettas(), lda.docs)
             converged = True
