@@ -324,7 +324,7 @@ def writeTettas(tettas, docs):
             colors += "[0, 1, 0];"
         else:
             colors += "[0, 0, 1];"
-    f.write("C = " + str(colors) + "]")
+    f.write("C = " + colors[:-1] + "]")
     f.close()
 
 def phiDifference(phi_prev, phi_curr):
