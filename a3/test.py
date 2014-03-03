@@ -1,18 +1,7 @@
-#!/usr/bin/env python
-# -*- coding: utf-8 -*-
-
-# Latent Dirichlet Allocation + collapsed Gibbs sampling
-# This code is available under the MIT License.
-# (c)2010-2011 Nakatani Shuyo / Cybozu Labs Inc.
-
 import numpy
 import string, re, timeit, math
-import json
-from pprint import pprint
 import xml.etree.ElementTree as ET
-#from nltk import PorterStemmer
 from sets import Set
-import re, string, timeit
 from stemming.porter2 import stem
 
 exclude = set(string.punctuation)
@@ -31,21 +20,14 @@ NUMBER_OF_NON_ZERO_VALUES = 0
 # n = length of documents in words
 
 class Document(object):
-
     category = 0
-    
-    alphas = []
-    betas = []
-
     words = []
     filename = ""
-    length = 0
 
     def __init__(self, filename, category, words):
         self.category = category
         self.filename = filename
         self.words = words
-
 
     def __str__(self):
         return "Document: " + self.filename + "\n" +"Category: " + self.category + "\n" +"Dict: " + str(self.count_vector)
@@ -166,9 +148,9 @@ def parseFile(vocabulary, documents, filename):
     raw_docs = []
 
     for reuter, title, dateline, body in zip(root.iter('REUTERS'), root.iter('TITLE'), root.iter('DATELINE'), root.iter('BODY')):
-        if (reuter.attrib['TOPICS'] == "YES"):
-            fullText = title.text + " " + dateline.text + " " + body.text
-            raw_docs.append(buildVocabulary(fullText, vocabulary))
+        #if (reuter.attrib['TOPICS'] == "YES"):
+        fullText = title.text + " " + dateline.text + " " + body.text
+        raw_docs.append(buildVocabulary(fullText, vocabulary))
     buildIndexes(vocabulary)
 
     for words in raw_docs:
@@ -213,8 +195,6 @@ def buildIndexes(vocabulary):
     for key in keysToRemove:
         vocabulary.pop(key, None)
 
-
-
 def parseString(rawWords, vocabulary):
     words = []
     for word in rawWords:
@@ -225,25 +205,22 @@ def parseString(rawWords, vocabulary):
 def removePunctation(s):
     return s.translate(table, string.punctuation)
 
-
-
-
 class LDA:
-    def __init__(self, K, alpha, beta, docs, V):
+    def __init__(self, K, alpha, beta, docs, V, options):
         self.K = K
         self.alpha = alpha # parameter of topics prior
         self.beta = beta   # parameter of words prior
         self.docs = docs
         self.V = V
+        self.options = options
+        self.output = ""
 
         self.z_m_n = [] # topics of words of documents
         self.n_m_z = numpy.zeros((len(self.docs), K)) + alpha     # word count of each document and topic
         self.n_z_t = numpy.zeros((K, V)) + beta # word count of each topic and vocabulary
         self.n_z = numpy.zeros(K) + V * beta    # word count of each topic
 
-        self.N = 0
         for m, doc in enumerate(docs):
-            self.N += doc.length
             z_n = []
             for term in doc.words:
                 z = numpy.random.randint(0, K)
@@ -266,7 +243,6 @@ class LDA:
         return tettas
 
     def inference(self):
-        """learning once iteration"""
         for m, doc in enumerate(self.docs):
             z_n = self.z_m_n[m]
             n_m_z = self.n_m_z[m]
@@ -280,7 +256,7 @@ class LDA:
                 self.n_z[z] -= 1
 
                 # sampling topic new_z for t
-                p_z = self.n_z_t[:, term-1] * n_m_z / (self.n_z * n_m_z_sum)
+                p_z = self.n_z_t[:, term-1] * n_m_z / self.n_z
                 new_z = numpy.random.multinomial(1, p_z / p_z.sum()).argmax()
 
                 # set z the new topic and increment counters
@@ -291,31 +267,21 @@ class LDA:
                 n+=1
 
     def worddist(self):
-        """get topic-word distribution"""
         return self.n_z_t / self.n_z[:, numpy.newaxis]
-
-    def perplexity(self, docs=None):
-        if docs == None: docs = self.docs
-        phi = self.worddist()
-        log_per = 0
-        N = 0
-        Kalpha = self.K * self.alpha
-        for m, doc in enumerate(docs):
-            theta = self.n_m_z[m] / (self.docs[m].length + Kalpha)
-            for term in doc.words:
-                log_per -= numpy.log(numpy.inner(phi[:,term-1], theta))
-            N += doc.length
-        return numpy.exp(log_per / N)
 
 def tettasToMatlab(tettas):
     return [[tettas[j][i] for j in range(len(tettas))] for i in range(len(tettas[0])) ]
 
-def writeTettas(tettas, docs):
+def writeTettas(lda, voca, iteration):
+    tettas = lda.getTettas()
+    docs = lda.docs
+    options = lda.options + "_epochs_" + str(iteration)
     newTettas = tettasToMatlab(tettas)
     dimensions = ["X = ", "Y = ", "Z = "]
-    f = open("output.txt", "w")
+    f = open("output" + options + ".txt", "w")
+    f.write("\n\n\n")
     for tag, plots in zip(dimensions, newTettas):
-        f.write(tag + str(plots) + "\n")
+        f.write(tag + str(plots) + ";\n")
     colors = "["
     for i in range(len(docs)):
         if docs[i].category == 1:
@@ -324,7 +290,9 @@ def writeTettas(tettas, docs):
             colors += "[0, 1, 0];"
         else:
             colors += "[0, 0, 1];"
-    f.write("C = " + colors[:-1] + "]")
+    f.write("C = " + colors[:-1] + "];\n\n")
+    f.write(output_word_topic_dist(lda, voca))
+    f.write("\n\n" + lda.output)
     f.close()
 
 def phiDifference(phi_prev, phi_curr):
@@ -336,23 +304,22 @@ def lda_learning(lda, iteration, voca):
     phi_prev = lda.worddist()
     converged = False
     for i in range(iteration):
-        print "before inference"
         lda.inference()
-        print "before"
         phi_curr = lda.worddist()
-        print "Difference: " + str(phiDifference(phi_prev, phi_curr))
-        if phiDifference(phi_prev, phi_curr) < 0.000005 and converged == False:
-            output_word_topic_dist(lda, voca)
-            writeTettas(lda.getTettas(), lda.docs)
+        diff = phiDifference(phi_prev, phi_curr)
+        s = "Difference: " + str(diff)
+        print s
+        lda.output += "\n" + str(s)
+        if phiDifference(phi_prev, phi_curr) < 0.00005 and converged == False:
+            writeTettas(lda, voca, i)
             converged = True
         phi_prev = phi_curr
-    if converged == False:
-        writeTettas(lda.getTettas(), lda.docs)
-    output_word_topic_dist(lda, voca)
+    writeTettas(lda, voca, iteration)
 
 def output_word_topic_dist(lda, voca):
     zcount = numpy.zeros(lda.K, dtype=int)
     wordcount = [dict() for k in xrange(lda.K)]
+    output = ""
     for xlist, zlist in zip(lda.docs, lda.z_m_n):
         for x, z in zip(xlist.words, zlist):
             zcount[z] += 1
@@ -363,40 +330,35 @@ def output_word_topic_dist(lda, voca):
 
     phi = lda.worddist()
     for k in xrange(lda.K):
-        print ("\n-- topic: " + str(k) + " words: " + str(zcount[k]))
+        output += ("\n-- topic: " + str(k) + " words: " + str(zcount[k]))
         for w in numpy.argsort(-phi[k])[:20]:
-            print (str(voca[w+1]) + ": " + str(phi[k,w]) + " (" +str(wordcount[k].get(w+1,0)) + ")")
+            output += ("\n" + str(voca[w+1]) + ": " + str(phi[k,w]) + " (" +str(wordcount[k].get(w+1,0)) + ")")
+    print output
+    return output
 
 def main():
     k = 3
-    alpha = 0.1
-    beta = 0.1
-    epochs = 200
-    useClassic400 = False
+    alpha = 0.05/k
+    
+    epochs = 300
+    useClassic400 = True
     vocabulary = {}
     documents = []
-    print vocabulary
-    print "Number of docs: " + str(len(documents))
-    print 
+    options = ""
 
     if (not useClassic400):
         vocabulary = readReuters(vocabulary, documents)
-
-
-        # documents = readFileNames()
-        # vocabulary = readTerms()
-        # readTermMatrix(documents)
+        options += "reuters21578_"
     else:
         vocabulary = read400Terms()
         documents = read400()
+        options += "classic400_"
+    print "Number of docs: " + str(len(documents))
 
-    #numpy.random.seed(options.seed)
-
-    lda = LDA(k, alpha, beta, documents, len(vocabulary))
+    beta = 2000.0 / len(vocabulary)
+    options += "nrOfDocs_" + str(len(documents)) + "_alpha_" + str(alpha) + "_beta_" + str(beta) + "_k_" + str(k)
+    lda = LDA(k, alpha, beta, documents, len(vocabulary), options)
     print ("corpus=" + str(len(vocabulary)) + ", K=" + str(k) + ", a=" + str(alpha) + ", b=" + str(beta))
-
-    #import cProfile
-    #cProfile.runctx('lda_learning(lda, options.iteration, voca)', globals(), locals(), 'lda.profile')
     lda_learning(lda, epochs, vocabulary)
 
 if __name__ == "__main__":
