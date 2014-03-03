@@ -270,8 +270,8 @@ class LDA:
     def worddist(self):
         return self.n_z_t / self.n_z[:, numpy.newaxis]
 
-def pca(tettas):
-    pca = mdp.nodes.PCANode(input_dim=4, output_dim=3)
+def pca(k, tettas):
+    pca = mdp.nodes.PCANode(input_dim=k, output_dim=3)
     x = numpy.array(tettas)
     pca.train(x)
     print "before pca : " + str(x)
@@ -287,7 +287,7 @@ def writeTettas(lda, voca, iteration):
     docs = lda.docs
     options = lda.options + "_epochs_" + str(iteration)
     if (lda.K > 3):
-        newTettas = pca(tettas)
+        newTettas = pca(lda.K, tettas)
     else:
         newTettas = tettasToMatlab(tettas)
     dimensions = ["X = ", "Y = ", "Z = "]
@@ -323,7 +323,7 @@ def lda_learning(lda, iteration, voca):
         s = "Difference: " + str(diff)
         print s
         lda.output += "\n" + str(s)
-        if phiDifference(phi_prev, phi_curr) < 0.00005 and converged == False:
+        if phiDifference(phi_prev, phi_curr) < 0.000005 and converged == False:
             writeTettas(lda, voca, i)
             converged = True
         phi_prev = phi_curr
@@ -350,11 +350,11 @@ def output_word_topic_dist(lda, voca):
     return output
 
 def main():
-    k = 4
-    alpha = 1.0/k
+    k = 3
+    alpha = 0.05/k
     
-    epochs = 100
-    useClassic400 = True
+    epochs = 200
+    useClassic400 = False
     vocabulary = {}
     documents = []
     options = ""
