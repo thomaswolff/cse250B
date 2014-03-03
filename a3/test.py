@@ -3,6 +3,7 @@ import string, re, timeit, math
 import xml.etree.ElementTree as ET
 from sets import Set
 from stemming.porter2 import stem
+import mdp
 
 exclude = set(string.punctuation)
 table = string.maketrans("","")
@@ -269,6 +270,15 @@ class LDA:
     def worddist(self):
         return self.n_z_t / self.n_z[:, numpy.newaxis]
 
+def pca(tettas):
+    pca = mdp.nodes.PCANode(input_dim=4, output_dim=3)
+    x = numpy.array(tettas)
+    pca.train(x)
+    print "before pca : " + str(x)
+    res = pca(x)
+    print "after pca: " + str(res)
+    return res.transpose()
+
 def tettasToMatlab(tettas):
     return [[tettas[j][i] for j in range(len(tettas))] for i in range(len(tettas[0])) ]
 
@@ -276,7 +286,10 @@ def writeTettas(lda, voca, iteration):
     tettas = lda.getTettas()
     docs = lda.docs
     options = lda.options + "_epochs_" + str(iteration)
-    newTettas = tettasToMatlab(tettas)
+    if (lda.K > 3):
+        newTettas = pca(tettas)
+    else:
+        newTettas = tettasToMatlab(tettas)
     dimensions = ["X = ", "Y = ", "Z = "]
     f = open("output" + options + ".txt", "w")
     f.write("\n\n\n")
@@ -337,10 +350,10 @@ def output_word_topic_dist(lda, voca):
     return output
 
 def main():
-    k = 3
-    alpha = 0.05/k
+    k = 4
+    alpha = 1.0/k
     
-    epochs = 300
+    epochs = 100
     useClassic400 = True
     vocabulary = {}
     documents = []
@@ -355,7 +368,7 @@ def main():
         options += "classic400_"
     print "Number of docs: " + str(len(documents))
 
-    beta = 2000.0 / len(vocabulary)
+    beta = 200.0 / len(vocabulary)
     options += "nrOfDocs_" + str(len(documents)) + "_alpha_" + str(alpha) + "_beta_" + str(beta) + "_k_" + str(k)
     lda = LDA(k, alpha, beta, documents, len(vocabulary), options)
     print ("corpus=" + str(len(vocabulary)) + ", K=" + str(k) + ", a=" + str(alpha) + ", b=" + str(beta))
