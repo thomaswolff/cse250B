@@ -350,11 +350,11 @@ def output_word_topic_dist(lda, voca):
     return output
 
 def main():
-    k = 10
-    alpha = 0.05/k
+    k = 4
+    alpha = 1.0/k
     
     epochs = 200
-    useClassic400 = False
+    useClassic400 = True
     vocabulary = {}
     documents = []
     options = ""
