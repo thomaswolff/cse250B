@@ -294,7 +294,10 @@ def writeTettas(lda, voca, iteration):
     f = open("output" + options + ".txt", "w")
     f.write("\n\n\n")
     for tag, plots in zip(dimensions, newTettas):
-        f.write(tag + str(plots) + ";\n")
+        f.write(tag)
+        for line in plots:
+            f.write(str(line)+ ", ")
+        f.write(";\n")
     colors = "["
     for i in range(len(docs)):
         if docs[i].category == 1:
@@ -350,11 +353,11 @@ def output_word_topic_dist(lda, voca):
     return output
 
 def main():
-    k = 4
+    k = 150
     alpha = 1.0/k
     
     epochs = 200
-    useClassic400 = True
+    useClassic400 = False
     vocabulary = {}
     documents = []
     options = ""
