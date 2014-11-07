@@ -55,45 +55,23 @@ class RAE:
 
 
 
-	def train(self):
-		while(True):
+	def train(self, iterations):
+		i = 0
+		while(i < iterations):
+			i += 1
 			for review in self.trainingReviews:
 				for sentence in review.sentences:
 					self.example = sentence
-					#bygge trestruktur
+
 					T = self.findTreeStructure(sentence.words)
-					# feedForward(T)
-					# backprop
+
 					self.backpropagation(T)
 					self.randomPhrase = T
-					print "\Tree" + self.toLatexTree(T)
-					#print " ----------------------------\n"
 
-					#oppdater parametre
+					#Update parameters
 					self.W += self.lambd * (self.dW - (0.5*self.mu*self.W))
 					self.U += self.lambd * (self.dU - (0.5*self.mu*self.U)) 
 					self.V += self.lambd * (self.dV - (0.5*self.mu*self.V))
-					#(dW, dU, dV) = self.calculateNumericalDerivatives(T, 0.0000000001)
-					# print "----------------------- dW -----------------------"
-					# print "Backprop:"
-					# print self.dW
-					# print "Numerical"
-					# print dW
-
-					# print "----------------------- dU -----------------------"
-					# print "Backprop:"
-					# print self.dU
-					# print "Numerical"
-					# print dU
-
-					# print "----------------------- dV -----------------------"
-					# print "Backprop:"
-					# print self.dV
-					# print "Numerical"
-					# print dV
-					break
-				break
-			break
 			print self.validate(self.validationReviews)
 
 	def validate(self, reviews):
@@ -116,14 +94,12 @@ class RAE:
 				if mostSimilarPhrase is None or similarity < mostSimilarPhrase[1]:
 					mostSimilarPhrase = (root, similarity)
 
-				#print "p: ", root.p.output[0]
+
 			if count > 0 and review.label[0] is 1:
 					numberOfCorrectReviews += 1
 			elif count < 0 and review.label[0] is 0:
 					numberOfCorrectReviews += 1
-			# elif count is len(review.sentences)/2:
-			# 	randomLabel = random.randint(0, 1)
-			# 	numberOfCorrectReviews += randomLabel
+
 		print "_____________POSITIVE_________________"
 		for positive, output in mostPositivePhrases:
 			print self.phraseToString(positive), output
@@ -133,10 +109,6 @@ class RAE:
 		for negative, output in mostNegativePhrases:
 			print self.phraseToString(negative), output
 		print ""
-		print "______A RANDOM PHRASE_________________"
-		print self.phraseToString(self.randomPhrase.phrase)
-		print "______A SIMILAR PHRASE________________"
-		print self.phraseToString(mostSimilarPhrase[0].phrase)
 
 		return numberOfCorrectReviews/float(len(reviews))
 
@@ -148,9 +120,6 @@ class RAE:
 		for i in range(len(this.output)):
 			sum += (this.output[i] - self.randomPhrase.output[i]) * (this.output[i] - self.randomPhrase.output[i])
 		return math.sqrt(sum) < best
-
-
-
 
 	def phraseToString(self, phrase):
 		out = ""
@@ -177,7 +146,7 @@ class RAE:
 				most = (node.phrase, node.p.output[0])
 		return most
 
-	#data = List of words in a sentence
+	# data = List of words in a sentence
 	def findTreeStructure(self, data):
 		fringe = []
 		for word in data:
@@ -503,8 +472,7 @@ def main():
 		lexicon = dataset.lexicon	
 		rae = RAE(dataset.mapIdToWord, lexicon, W, U, V, trainingReviews, validationReviews, testReviews, d, r, alpha, lambd, mu)
 
-
-	rae.train()
+	rae.train(10)
 
 if __name__ == "__main__":
     main()

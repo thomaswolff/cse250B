@@ -15,7 +15,7 @@ class Dataset:
 		self.reviews = self.readReviews()
 
 	def readStopWords(self):
-	    lines = self.readFile("stopwords.txt")
+	    lines = self.readFile("../data/stopwords.txt")
 	    stopwords = Set([])
 	    for line in lines:
 	        words = line.split(' ')
@@ -35,12 +35,12 @@ class Dataset:
 
 	def readReviews(self):
 		reviews = []
-		files = self.readFilenames("review_polarity/txt_sentoken/neg")
+		files = self.readFilenames("../data/review_polarity/txt_sentoken/neg")
 		for filename in files:
-			reviews.append(self.readReview("review_polarity/txt_sentoken/neg/" + filename, [0]))
-		files = self.readFilenames("review_polarity/txt_sentoken/pos")
+			reviews.append(self.readReview("../data/review_polarity/txt_sentoken/neg/" + filename, [0]))
+		files = self.readFilenames("../data/review_polarity/txt_sentoken/pos")
 		for filename in files:
-			reviews.append(self.readReview("review_polarity/txt_sentoken/pos/" + filename, [1]))
+			reviews.append(self.readReview("../data/review_polarity/txt_sentoken/pos/" + filename, [1]))
 		return reviews
 
 	def readReview(self, filename, label):
