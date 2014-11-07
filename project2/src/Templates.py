@@ -107,9 +107,6 @@ class Template2D(object):
 			else: 
 				word = x[self.x_index]
 			word = word.lower()
-			#print "Length of word: " + str(len(x))
-			#print "i: " + str(i)
-			#print "word: " + word
 			if self.premise(self.x_index, x, i) and word in self.set_of_a:
 				a_index = self.set_of_a[word]
 				if self.use_y_i:
@@ -139,11 +136,7 @@ class Template2D(object):
 					a_index = self.set_of_a[word]
 					if i == 0:
 						w_true = self(START, y_true[i], x, i)
-						#print "w_true: " + str(w_true)
 						if(w_true != minint):
-							#print "Hit true label"
-							#print "length of word: " + str(len(x))
-							#print "i: " + str(i)
 							if self.use_y_i:
 								w_true_Table[y_true[i]][a_index][i] = 1
 								f_true_Table[y_true[i]][a_index] = True
@@ -151,10 +144,7 @@ class Template2D(object):
 								w_true_Table[START][a_index][i] = 1
 								f_true_Table[START][a_index] = True
 						w_predicted = self(START, y_hat[i], x, i)
-						#print "w_predicted: " + str(w_predicted)
 						if(w_predicted != minint):
-							#print "length of word: " + str(len(x))
-							#print "i: " + str(i)
 							if self.use_y_i:
 								w_hat_Table[y_hat[i]][a_index][i] = 1
 								f_hat_Table[y_hat[i]][a_index] = True
@@ -163,11 +153,7 @@ class Template2D(object):
 								f_hat_Table[START][a_index] = True
 					else:
 						w_true = self(y_true[i-1], y_true[i], x, i)
-						#print "w_true: " + str(w_true)
 						if(w_true != minint):
-							#print "length of word: " + str(len(x))
-							#print "i: " + str(i)
-							#print "Hit true label"
 							if self.use_y_i:
 								w_true_Table[y_true[i]][a_index][i]  = 1
 								f_true_Table[y_true[i]][a_index] = True
@@ -175,21 +161,14 @@ class Template2D(object):
 								w_true_Table[y_true[i-1]][a_index][i]  = 1
 								f_true_Table[y_true[i-1]][a_index] = True
 						w_predicted = self(y_hat[i-1], y_hat[i], x, i)
-						#print "w_predicted: " + str(w_predicted)
 						if(w_predicted != minint):
-							#print "length of word: " + str(len(x))
-							#print "i: " + str(i)
 							if self.use_y_i:
 								w_hat_Table[y_hat[i]][a_index][i] = 1
 								f_hat_Table[y_hat[i]][a_index] = True
 							else:
 								w_hat_Table[y_hat[i-1]][a_index][i] = 1
 								f_hat_Table[y_hat[i-1]][a_index] = True
-			#print "Sentence: " + str(x)
-			#print "True label: " + str(y_true)
-			#print "Predicted label: " + str(y_hat)
-			#print "True f table: " + str(f_true_Table)
-			#print "Predicted f table: " + str(f_hat_Table)
+
 			for i in range(len(self.set_of_b)):
 				for j in self.set_of_a:
 					a_index = self.set_of_a[j]
@@ -197,19 +176,12 @@ class Template2D(object):
 					predicted_sum = 0.0
 					if(f_true_Table[i][a_index]):
 						# sum corresponding row in w_true_table
-						#print "Hit true"
-						#print "True: b: " +str(i) + ", j: " + str(j) + ", i-row: "+  str(w_true_Table[i][a_index])
 						for a in w_true_Table[i][a_index]:
 							true_sum += a
 					if(f_hat_Table[i][a_index]):
 						# sum corresponding row in w_hat_table
-						#print "Hit predicted"
-						#print "Predicted: b: " +str(i) + ", j: " + str(j) + ", i-row: " + str(w_hat_Table[i][a_index])
 						for a in w_hat_Table[i][a_index]:
 							predicted_sum += a
-					#print "True sum: " + str(true_sum)
-					#print "Predicted sum: " + str(predicted_sum)
 					if(true_sum != predicted_sum):
 						#print "update weight"
 						self.table[i][a_index] += true_sum - predicted_sum
-			#print "Table in update" + str(self.table)

@@ -5,22 +5,13 @@ from FeatureFunctions import *
 from math import exp
 import copy
 	
-
 def initializeFeatureFunctions():
 	t = []
-	# These are the ones we are using
 	t.append(Template1D(-1, True, tag_set, lambda x_index, x, i: i == (len(x) - 1)))
 	t.append(Template1D(-1, True, tag_set, lambda x_index, x, i: i < len(x)-1))
 	t.append(Template1D(-1, False, tag_set, lambda x_index, x, i: x[i][0].isupper() and len(x[i]) > 1 and i < 2))
 	t.append(Template2D(0, True, question_words, tag_set, lambda x_index, x, i: i == (len(x) - 1)))
 	t.append(Template2D(-1, False, conjunction_words, tag_set, lambda x_index, x, i: i < (len(x)-1)))
-
-	#t.append(Template2D(-1, True, exclamation_words, tag_set, lambda x_index, x, i: i == (len(x) - 1)))
-
-	# Not using these at the moment
-	#t.append(Template2D(0, False, question_words, tag_set, lambda x_index, x, i: i == (len(x) - 1)))
-	#t.append(Template1D(-1, True, tag_set, lambda x_index, x, i: x[i][0].isupper() if(x_index is (-1)) else x[0][0].isupper()))
-	#t.append(Template1D(-1, False, tag_set, lambda x_index, x, i: x[i][0].isupper() if(x_index is (-1)) else x[0][0].isupper()))
 	return t
 
 # Calculate value of a g function given y_prev and y
@@ -59,12 +50,6 @@ def preprocess(x, ts, tag_set):
 		i += 1
 	return gs
 
-# Find the optimal sequence of length k with v
-# k is the length of the sequence
-# v is the tag for y[k]
-# gs are the different enumerated g-functions
-
-
 # Fill the U matrix by calling U on every tag in the tag set
 def fill_U_matrix(gs, tag_set, n):
 	dp_table = [[minint for j in range(len(tag_set))] for i in range(n)]
@@ -88,7 +73,7 @@ def predict(gs, tag_set, sentence):
 	y = [START for i in range(n)]
 	# Fill U matrix
 	U = fill_U_matrix(gs, tag_set, n)
-	#print(str(U))
+
 	# Find best prediction for last tag in y
 	max_val = minint
 	max_u = 1
@@ -110,18 +95,9 @@ def predict(gs, tag_set, sentence):
 	return y
 
 def updateWeightsCP(ts, sentence, y_hat):
-	# # For each weight, do the update rule in Collins perceptron
-	# for i in range(len(ws)):
-	# 	desired = fs[i](sentence.x, sentence.y)
-	# 	#print("F of desired: " + str(desired))
-	# 	undesired = fs[i](sentence.x, y_hat)
-	# 	#print("F of undesired: " + str(undesired))
-	# 	ws[i] += (desired - undesired)
+	# For each weight, do the update rule in Collins perceptron
 	for t in ts:
-		#print "Table before update: " + str(t.table)
 		t.updateWeights(y_hat, sentence)
-		#print "Table after update: " + str(t.table)
-
 
 def gibbsSample(gs, tag_set, sentence):
 	y_star = sentence.y[:]
@@ -130,10 +106,10 @@ def gibbsSample(gs, tag_set, sentence):
 			distribution = getDistributionForTags(gs, tag_set, y_star, i)
 			sample = getRandomSampleFromDistribution(distribution, tag_set)
 			y_star[i] = sample
+
 		y_star_prob = evaluateProbabilityForY(y_star, gs)
 		y_tru_prob = evaluateProbabilityForY(sentence.y, gs)
-		#print "Y* prob: " + str(y_star_prob)
-		#print "Y true prob: " + str(y_tru_prob)
+
 		if y_star_prob >= evaluateProbabilityForY(sentence.y, gs):
 			break
 	return y_star
@@ -178,13 +154,8 @@ def getDistributionForTags(gs, tag_set, y_star, i):
 				probabilities[j] = exp(gs[i][y_star[i-1]][tag]) * exp(gs[i+1][tag][y_star[i+1]])
 			probabilities[j] /= denominator
 	return probabilities
-
-
-
-		
+	
 def collinsPerceptron(ts, tag_set, training_set, validation_set, useGibbs):
-	# Initialize all weights to be zero
-	#ws = [0.0]*len(fs)
 	previousCorrectnessRate = 0.0
 	iterations = 0
 	if (useGibbs):
@@ -224,11 +195,7 @@ def validate(ts, tag_set, validation_set):
 	for sentence in validation_set:
 		gs = preprocess(sentence.x, ts, tag_set)
 		y_predicted = predict(gs, tag_set, sentence)
-		#print("True label: " + str(sentence.y))
-		#print("Predicted label: " + str(y_predicted))
-		#print("Sentence: " + str(sentence.x))
-		#print("y_correct: " + str(sentence.y))
-		#print("y_predicted :" + str(y_predicted))
+
 		for (correctTag, predictedTag) in zip(sentence.y, y_predicted):
 			numberOfTags += 1
 			if predictedTag is correctTag:
@@ -239,8 +206,6 @@ def validate(ts, tag_set, validation_set):
 def validateTestSet(ts, tag_set, validation_set, correctPredictedTags, trueTags):
 	numberOfTags = 0
 	numberOfCorrectTags = 0
-	#trueTags = [0 for i in range(len(tag_set))]
-	#correctPredictedTags = [0 for i in range(len(tag_set))]
 	totalPredictTime = 0.0
 	predict_time = 0.0
 	print "True tags: " + str(trueTags)
@@ -249,11 +214,6 @@ def validateTestSet(ts, tag_set, validation_set, correctPredictedTags, trueTags)
 		predict_time -= time.time()
 		gs = preprocess(sentence.x, ts, tag_set)
 		y_predicted = predict(gs, tag_set, sentence)
-		#print("True label: " + str(sentence.y))
-		#print("Predicted label: " + str(y_predicted))
-		#print("Sentence: " + str(sentence.x))
-		#print("y_correct: " + str(sentence.y))
-		#print("y_predicted :" + str(y_predicted))
 		predict_time += time.time()
 		totalPredictTime += predict_time
 		for (correctTag, predictedTag) in zip(sentence.y, y_predicted):
@@ -296,15 +256,12 @@ def validateTestSet(ts, tag_set, validation_set, correctPredictedTags, trueTags)
 		print ""
 
 	print "Time to predict one sentence: " + str(totalPredictTime / len(validation_set))
-
-
-
 	return float(numberOfCorrectTags)/numberOfTags
 	
 def readFile(filename):
-	with open ("./punctuationDataset/" + filename + "Labels.txt") as data:
+	with open ("../punctuationDataset/" + filename + "Labels.txt") as data:
 		labels = data.readlines();
-	with open ("./punctuationDataset/" + filename + "Sentences.txt") as data:
+	with open ("../punctuationDataset/" + filename + "Sentences.txt") as data:
 		sentences = data.readlines();
 
 	examples = []
@@ -323,7 +280,6 @@ def readFile(filename):
 		examples.append(Sentence(wordsInSentence, y))
 	random.shuffle(examples)
 	return examples
-
 
 def main():
 	numberOfRuns = 10
